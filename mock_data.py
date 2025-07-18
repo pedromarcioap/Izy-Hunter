@@ -68,17 +68,17 @@ class MockDataGenerator:
         """Generate mock Google search results"""
         return self._generate_base_results(3, 7, query)
     
-    def generate_you_results(self, query, custom_keywords):
-        """Generate mock You.com search results"""
+    def generate_duckduckgo_results(self, query, custom_keywords):
+        """Generate mock DuckDuckGo search results"""
         return self._generate_base_results(2, 5, query)
     
-    def generate_perplexity_results(self, query, custom_keywords):
-        """Generate mock Perplexity search results"""
-        return self._generate_base_results(2, 6, query)
+    def generate_yahoo_results(self, query, custom_keywords):
+        """Generate mock Yahoo search results"""
+        return self._generate_base_results(2, 5, query)
     
-    def generate_bing_results(self, query, custom_keywords):
-        """Generate mock Bing search results"""
-        return self._generate_base_results(2, 4, query)
+    def generate_bravo_results(self, query, custom_keywords):
+        """Generate mock Bravo Search results"""
+        return self._generate_base_results(2, 5, query)
     
     def _generate_base_results(self, min_count, max_count, query):
         """Generate base mock results"""
