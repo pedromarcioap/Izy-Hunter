@@ -1,11 +1,11 @@
-import streamlit as st
 import os
+import streamlit as st
 import json
 from typing import Dict, Optional
 
 class APIConfigManager:
     """Manages API keys and configuration for search engines"""
-    
+
     def __init__(self):
         self.config_file = "api_config.json"
         self.supported_engines = {
@@ -14,23 +14,23 @@ class APIConfigManager:
                 'description': 'Google Custom Search API',
                 'docs': 'https://developers.google.com/custom-search/v1/introduction'
             },
-            'Bing': {
-                'keys': ['BING_API_KEY'],
-                'description': 'Bing Search API',
-                'docs': 'https://www.microsoft.com/en-us/bing/apis/bing-web-search-api'
-            },
             'DuckDuckGo': {
                 'keys': [],
                 'description': 'DuckDuckGo (Sem API key necessária)',
                 'docs': 'https://duckduckgo.com/api'
             },
-            'Perplexity': {
-                'keys': ['PERPLEXITY_API_KEY'],
-                'description': 'Perplexity API',
-                'docs': 'https://perplexity.ai/api'
+            'Yahoo!': {
+                'keys': ['YAHOO_APP_ID', 'YAHOO_CLIENT_ID', 'YAHOO_CLIENT_SECRET'],
+                'description': 'Yahoo! Search API (OAuth2)',
+                'docs': 'https://developer.yahoo.com/search/'
+            },
+            'Bravo Search': {
+                'keys': ['BRAVO_API_KEY'],
+                'description': 'Bravo Search API',
+                'docs': 'https://brave.com/search/api/'
             }
         }
-    
+
     def load_config(self) -> Dict:
         """Load API configuration from file"""
         try:
@@ -41,7 +41,7 @@ class APIConfigManager:
         except Exception as e:
             st.error(f"Erro ao carregar configuração: {e}")
             return {}
-    
+
     def save_config(self, config: Dict) -> bool:
         """Save API configuration to file"""
         try:
@@ -51,18 +51,17 @@ class APIConfigManager:
         except Exception as e:
             st.error(f"Erro ao salvar configuração: {e}")
             return False
-    
+
     def get_api_key(self, engine: str, key_name: str) -> Optional[str]:
         """Get API key for specific engine"""
         # First check environment variables
         env_key = os.getenv(key_name)
         if env_key:
             return env_key
-        
         # Then check saved configuration
         config = self.load_config()
         return config.get(engine, {}).get(key_name)
-    
+
     def set_api_key(self, engine: str, key_name: str, key_value: str) -> bool:
         """Set API key for specific engine"""
         config = self.load_config()
@@ -70,7 +69,7 @@ class APIConfigManager:
             config[engine] = {}
         config[engine][key_name] = key_value
         return self.save_config(config)
-    
+
     def remove_api_key(self, engine: str, key_name: str) -> bool:
         """Remove API key for specific engine"""
         config = self.load_config()
@@ -80,19 +79,28 @@ class APIConfigManager:
                 del config[engine]
             return self.save_config(config)
         return False
-    
+
+    def get_api_keys_env_or_file(self) -> Dict[str, str]:
+        """Get all API keys from environment variables or config file."""
+        api_keys = {}
+        for engine, info in self.supported_engines.items():
+            for key in info['keys']:
+                value = os.environ.get(key, "") or self.get_api_key(engine, key) or ""
+                api_keys[key.lower()] = value
+        return api_keys
+
     def get_engine_status(self, engine: str) -> Dict:
         """Get status of API configuration for an engine"""
         if engine not in self.supported_engines:
             return {'configured': False, 'error': 'Engine not supported'}
-        
+
         required_keys = self.supported_engines[engine]['keys']
         if not required_keys:  # No API key required (like DuckDuckGo)
             return {'configured': True, 'keys_status': {}}
-        
+
         keys_status = {}
         all_configured = True
-        
+
         for key in required_keys:
             api_key = self.get_api_key(engine, key)
             keys_status[key] = {
@@ -101,40 +109,46 @@ class APIConfigManager:
             }
             if not api_key:
                 all_configured = False
-        
+
         return {
             'configured': all_configured,
             'keys_status': keys_status
         }
-    
+
     def render_config_ui(self):
         """Render the API configuration UI"""
-        st.subheader("🔑 Configuração de APIs")
+        st.header("🔑 Configuração de APIs dos Motores de Busca")
+        st.markdown("""
+        - **Google:** Insira `GOOGLE_API_KEY` e `GOOGLE_CSE_ID` como variáveis de ambiente ou salve abaixo.
+        - **DuckDuckGo:** Não requer chave de API.
+        - **Yahoo!:** Requer OAuth2: `YAHOO_APP_ID`, `YAHOO_CLIENT_ID`, `YAHOO_CLIENT_SECRET`.
+        - **Bravo Search:** Insira `BRAVO_API_KEY` como variável de ambiente ou salve abaixo.
+        """)
         
         # Configuration tabs
         tab1, tab2, tab3 = st.tabs(["Configurar APIs", "Status", "Documentação"])
-        
+
         with tab1:
             st.write("Configure as chaves API para ativar a busca real:")
-            
+
             # Create form for each engine
             for engine, info in self.supported_engines.items():
                 with st.expander(f"{engine} - {info['description']}"):
                     required_keys = info['keys']
-                    
+
                     if not required_keys:
                         st.success("✅ Não requer API key - Pronto para uso")
                         continue
-                    
+
                     # Form for this engine
                     with st.form(f"form_{engine}"):
                         st.write(f"**Chaves necessárias para {engine}:**")
-                        
+
                         form_data = {}
                         for key in required_keys:
                             current_value = self.get_api_key(engine, key)
                             placeholder = "***********" if current_value else "Cole sua API key aqui"
-                            
+
                             form_data[key] = st.text_input(
                                 key,
                                 value="",
@@ -142,7 +156,7 @@ class APIConfigManager:
                                 type="password",
                                 help=f"API key para {key}"
                             )
-                        
+
                         col1, col2 = st.columns([1, 1])
                         with col1:
                             if st.form_submit_button("💾 Salvar"):
@@ -152,13 +166,13 @@ class APIConfigManager:
                                         if not self.set_api_key(engine, key, value.strip()):
                                             success = False
                                             break
-                                
+
                                 if success:
                                     st.success(f"Configuração salva para {engine}")
                                     st.rerun()
                                 else:
                                     st.error("Erro ao salvar configuração")
-                        
+
                         with col2:
                             if st.form_submit_button("🗑️ Remover"):
                                 success = True
@@ -166,38 +180,38 @@ class APIConfigManager:
                                     if not self.remove_api_key(engine, key):
                                         success = False
                                         break
-                                
+
                                 if success:
                                     st.success(f"Configuração removida para {engine}")
                                     st.rerun()
                                 else:
                                     st.error("Erro ao remover configuração")
-        
+
         with tab2:
             st.write("Status das configurações de API:")
-            
+
             for engine in self.supported_engines:
                 status = self.get_engine_status(engine)
-                
+
                 if status['configured']:
                     st.success(f"✅ {engine} - Configurado")
                 else:
                     st.error(f"❌ {engine} - Não configurado")
-                
+
                 # Show detailed status
                 if 'keys_status' in status and status['keys_status']:
                     for key, key_status in status['keys_status'].items():
                         source_icon = "🌍" if key_status['source'] == 'environment' else "💾" if key_status['source'] == 'saved' else "❌"
                         st.write(f"  {source_icon} {key}: {key_status['source']}")
-        
+
         with tab3:
             st.write("Documentação e links úteis:")
-            
+
             for engine, info in self.supported_engines.items():
                 with st.expander(f"Como obter API key para {engine}"):
                     st.write(f"**Serviço:** {info['description']}")
                     st.write(f"**Documentação:** {info['docs']}")
-                    
+
                     if engine == 'Google':
                         st.write("**Passos:**")
                         st.write("1. Acesse Google Cloud Console")
@@ -205,41 +219,14 @@ class APIConfigManager:
                         st.write("3. Ative a API Custom Search")
                         st.write("4. Crie credenciais (API Key)")
                         st.write("5. Configure um Custom Search Engine")
-                    
-                    elif engine == 'Bing':
-                        st.write("**Passos:**")
-                        st.write("1. Acesse Azure Portal")
-                        st.write("2. Crie um recurso Bing Search")
-                        st.write("3. Obtenha a chave da API")
-                    
+
                     elif engine == 'DuckDuckGo':
                         st.write("**Informações:**")
                         st.write("- Não requer API key")
                         st.write("- Uso gratuito com limitações")
                         st.write("- Busca através de scraping web")
-                    
-                    elif engine == 'Perplexity':
+
+                    elif engine == 'Yahoo!':
                         st.write("**Passos:**")
-                        st.write("1. Acesse perplexity.ai")
-                        st.write("2. Crie uma conta")
-                        st.write("3. Acesse área de API")
-                        st.write("4. Gere uma API key")
-    
-    def get_available_engines(self) -> list:
-        """Get list of engines that are properly configured"""
-        available = []
-        for engine in self.supported_engines:
-            status = self.get_engine_status(engine)
-            if status['configured']:
-                available.append(engine)
-        return available
-    
-    def clear_all_config(self):
-        """Clear all API configuration"""
-        try:
-            if os.path.exists(self.config_file):
-                os.remove(self.config_file)
-            return True
-        except Exception as e:
-            st.error(f"Erro ao limpar configuração: {e}")
-            return False
+                        st.write("1. Registre seu app na área de desenvolvedores do Yahoo!")
+                        st.write("2. Salve App
