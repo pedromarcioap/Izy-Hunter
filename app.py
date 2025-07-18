@@ -50,7 +50,8 @@ else:
         "concurso literário", "prêmio literatura", "antologia", "contos",
         "poesia", "edital cultural", "chamada pública", "festival literário"
     ]
-    default_engines = ["Google", "You", "Perplexity", "Bing"]
+    # Atualize a lista de buscadores disponíveis na sidebar:
+default_engines = ["Google", "DuckDuckGo", "Yandex", "Yahoo!", "Bravo Search"]
 
 if 'custom_keywords' not in st.session_state:
     st.session_state.custom_keywords = default_keywords
