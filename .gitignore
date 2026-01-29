@@ -1,0 +1,6 @@
+# Ignore local env files and API configs
+.env
+api_config.json
+# Python artifacts
+*.pyc
+__pycache__/
